@@ -6,9 +6,9 @@
 //
 
 import UIKit
-import SnapKit
 
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate {
+
     
     @IBOutlet var tableView: UITableView!
     @IBOutlet var textField: UITextField!
@@ -41,8 +41,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             //refresh tableview
             //DispatchQueue.main.async {
                 //loadingVC.dismiss(animated: true, completion: nil)
-                showAlert(title: "Error", message: "You have not typed any word yet.")
-                movies.removeAll()
+            Helper().showAlert(controller: self, title: "Error", message: "You have not typed any word yet.")
+            movies.removeAll()
                 //tableView.reloadData()
             //}
             return
@@ -58,38 +58,27 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             query = text.replacingOccurrences(of: "", with: "%20")
         }
         
-        let urlkey = "https://www.omdbapi.com/?apikey=b40bcdca&s=\(query)&type=movie"
-        //api key düzeltilecek
-        URLSession.shared.dataTask(with: URL(string: "https://www.omdbapi.com/?apikey=3aea79ac&s=\(query)")!, completionHandler: { data, response, error in
-            
-            guard let data = data, error == nil else { return }
-            
-            //convert
-            var result: MovieResult?
-            
-            do{
-                result = try JSONDecoder().decode(MovieResult.self, from: data)
-            } catch {
-                print("error")
+        let url = "\(Constants.baseUrl+Constants.movieSearchKey+query)"
+        
+        NetworkService().getMovie(url: url, query: query) { movie in
+            if movie != nil {
+                //update movies array
+                let newMovies = movie!.Search
+                self.movies.append(contentsOf: newMovies)
+                
+                //refresh tableview
                 DispatchQueue.main.async {
-                    //self.loadingVC.dismiss(animated: true, completion: nil)
                     self.tableView.reloadData()
-                    self.showAlert(title: "Error", message: "There is no any film named \(self.query)")
                 }
+            } else {
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                    Helper().showAlert(controller: self, title: "Error", message: "There is no any film named \(self.query)")
+                }
+                
             }
             
-            guard let finalResult = result else { return }
-            
-            //update movies array
-            let newMovies = finalResult.Search
-            self.movies.append(contentsOf: newMovies)
-            
-            //refresh tableview
-            DispatchQueue.main.async {
-                self.hideAnimation()
-                self.tableView.reloadData()
-            }
-        }).resume()
+        }
     }
     
     //tableview functions
@@ -133,11 +122,4 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func hideAnimation() {
         loadingVC.dismiss(animated: true, completion: nil)
     }
-    
-    func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: UIAlertController.Style.alert)
-        alert.addAction(UIAlertAction(title: "OK", style: UIAlertAction.Style.default, handler: nil))
-        self.present(alert, animated: true, completion: nil)
-    }
-    
 }
